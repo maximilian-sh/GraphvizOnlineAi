@@ -1,182 +1,654 @@
 <!DOCTYPE html>
 <html lang="utf-8">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+        <title>Graphviz Online</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                background-color: #f8f9fa;
+                color: #333;
+            }
 
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <title>Graphviz Online</title>
-  <style type="text/css" media="screen">
-    body {
-      overflow: hidden;
-      margin: 0 0;
-    }
+            #editor-container {
+                position: absolute;
+                top: 50vh;
+                left: 0;
+                right: 50%;
+                bottom: 0;
+                border-top: 1px solid #e0e0e0;
+                border-right: 1px solid #e0e0e0;
+                z-index: 10;
+            }
 
-    body.presentation #editor {
-      display: none;
-    }
+            #editor {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                font-size: 14px;
+                z-index: 10;
+            }
 
-    body.presentation #options {
-      left: 0;
-    }
+            #visualization-container {
+                position: absolute;
+                top: 44px; /* Adjust for top bar */
+                left: 50%;
+                right: 0;
+                bottom: 0;
+                border-left: 1px solid #e0e0e0;
+                background-color: rgba(255, 255, 255, 0.7);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                overflow: auto;
+                z-index: 5;
+                overscroll-behavior: contain;
+            }
 
-    body.presentation #review {
-      left: 0;
-    }
+            #svg-container {
+                max-width: 100%;
+                max-height: 100%;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                position: relative;
+                overflow: hidden;
+                overscroll-behavior: contain;
+            }
 
-    #editor-toggle {
-      position: absolute;
-      left: 0;
-      top: 50%;
-      z-index: 10;
-      transform: translateY(-50%);
-    }
+            /* Fix for SVG pan-zoom controls */
+            .svg-pan-zoom-control {
+                position: absolute !important;
+                bottom: 20px !important;
+                right: 20px !important;
+                transform: none !important;
+                z-index: 50 !important;
+            }
 
-    #toggle-btn {
-      cursor: pointer;
-      padding: 8px;
-      background: #eee;
-      border: 1px solid #ccc;
-      border-right: none;
-      border-radius: 4px 0 0 4px;
-    }
+            .svg-pan-zoom-control-background {
+                fill: rgba(255, 255, 255, 0.8) !important;
+            }
 
-    #editor {
-      margin: 0;
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      right: 50%;
-      left: 0;
-      transition: width 0.3s ease;
-      width: 50%;
-    }
+            /* Fix for SVG to ensure it's zoomable */
+            #svg-container svg {
+                width: 100% !important;
+                height: 100% !important;
+                max-width: 100%;
+                max-height: 100%;
+                cursor: move;
+            }
 
-    #editor.collapsed {
-      width: 0;
-      overflow: hidden;
-    }
+            #chat-container {
+                position: absolute;
+                top: 44px; /* Adjust for top bar */
+                left: 0;
+                right: 50%;
+                height: calc(50vh - 44px); /* Adjust for top bar */
+                background: rgba(249, 250, 251, 0.95);
+                border-bottom: 1px solid #e0e0e0;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                z-index: 10;
+            }
 
-    #review {
-      margin: 0;
-      position: absolute;
-      top: 50px;
-      bottom: 0;
-      right: 0;
-      left: 50%;
-      overflow: scroll;
-      transition: left 0.3s ease;
-    }
+            #api-key-container {
+                display: none;
+            }
 
-    #review.expanded {
-      left: 0;
-    }
+            #api-key-input {
+                flex-grow: 1;
+                padding: 6px 10px;
+                border: 1px solid #dde1e6;
+                border-radius: 4px;
+                font-size: 12px;
+                background-color: white;
+                transition: border-color 0.2s;
+            }
 
-    #options {
-      margin: 0;
-      position: fixed;
-      left: 50%;
-      width: 100%;
-      flex: 0 0 auto;
-      background: #eee;
-      border-bottom: 1px solid #ccc;
-      padding: 8px;
-      overflow: hidden;
-      transition: left 0.3s ease;
-    }
+            #api-key-input:focus {
+                outline: none;
+                border-color: #1a73e8;
+                box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+            }
 
-    #options.expanded {
-      left: 0;
-    }
+            #api-key-container label {
+                font-size: 12px;
+                white-space: nowrap;
+                color: #555;
+                font-weight: 500;
+            }
 
-    #options label {
-      margin-right: 8px;
-    }
+            #api-key-save {
+                padding: 6px 10px;
+                background: #1a73e8;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 500;
+                transition: background-color 0.2s;
+            }
 
-    #options #raw.disabled {
-      opacity: 0.5;
-    }
+            #api-key-save:hover {
+                background-color: #1765cc;
+            }
 
-    #shareurl {
-      display: none;
-    }
+            #chat-messages {
+                flex-grow: 1;
+                overflow-y: auto;
+                padding: 12px 16px;
+                scrollbar-width: thin;
+                scrollbar-color: #ccc transparent;
+                z-index: 10;
+            }
 
-    #status {
-      width: 100%;
-      position: fixed;
-      bottom: 0;
-      display: block;
-      color: #FFF;
-      z-index: 999;
-    }
+            #chat-messages::-webkit-scrollbar {
+                width: 6px;
+            }
 
-    #review svg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
+            #chat-messages::-webkit-scrollbar-thumb {
+                background-color: #ccc;
+                border-radius: 3px;
+            }
 
-    #review #text {
-      font-size: 12px;
-      font-family: monaco, courier, monospace;
-      white-space: pre;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-    }
+            #chat-messages::-webkit-scrollbar-track {
+                background: transparent;
+            }
 
-    #review img {
-      display: block;
-      margin: 0 auto;
-    }
+            #chat-input-container {
+                display: flex;
+                padding: 10px;
+                border-top: 1px solid #e0e0e0;
+                background-color: #fff;
+                z-index: 10;
+            }
 
-    #review.working svg,
-    #output.error svg,
-    #review.working #text,
-    #output.error #text,
-    #review.working img,
-    #output.error img {
-      opacity: 0.4;
-    }
+            #chat-input {
+                flex-grow: 1;
+                padding: 8px 12px;
+                border: 1px solid #dde1e6;
+                border-radius: 4px;
+                resize: none;
+                font-family: inherit;
+                font-size: 14px;
+                background-color: white;
+                transition: border-color 0.2s;
+            }
 
-    #review.error #error {
-      display: inherit;
-    }
+            #chat-input:focus {
+                outline: none;
+                border-color: #1a73e8;
+                box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+            }
 
-    #review #error {
-      display: none;
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      margin-right: 20px;
-      background: red;
-      color: white;
-      z-index: 1;
-    }
+            #send-button {
+                margin-left: 8px;
+                padding: 8px 16px;
+                background-color: #1a73e8;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: 500;
+                transition: background-color 0.2s;
+            }
 
-    #download {
-      font: bold 12px Arial;
-      text-decoration: none;
-      background-color: #EEEEEE;
-      color: #333333;
-      padding: 2px 6px 2px 6px;
-      border-top: 1px solid #CCCCCC;
-      border-right: 1px solid #333333;
-      border-bottom: 1px solid #333333;
-      border-left: 1px solid #CCCCCC;
-    }
-  </style>
-</head>
+            #send-button:hover {
+                background-color: #1765cc;
+            }
 
-<body>
-  <div id="editor-toggle">
-    <button id="toggle-btn">◀</button>
-  </div>
-  <pre id="editor">digraph G {
+            .message {
+                margin-bottom: 12px;
+                padding: 10px 14px;
+                border-radius: 8px;
+                max-width: 90%;
+                line-height: 1.4;
+                position: relative;
+                font-size: 14px;
+            }
+
+            .user-message {
+                background-color: #e7f0fe;
+                color: #1a2734;
+                margin-left: auto;
+                border-bottom-right-radius: 2px;
+                border-top-right-radius: 8px;
+            }
+
+            .ai-message {
+                background-color: #f0f2f5;
+                color: #1a2734;
+                margin-right: auto;
+                border-bottom-left-radius: 2px;
+                border-top-left-radius: 8px;
+            }
+
+            .ai-message code {
+                background-color: rgba(0, 0, 0, 0.05);
+                padding: 0.2em 0.4em;
+                border-radius: 3px;
+                font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+                font-size: 90%;
+            }
+
+            .ai-message pre {
+                background-color: #f8f8f8;
+                padding: 10px;
+                border-radius: 4px;
+                overflow-x: auto;
+                margin: 8px 0;
+                font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+                font-size: 90%;
+                border: 1px solid #e0e0e0;
+            }
+
+            /* Styling for the diff buttons */
+            .diff-button {
+                padding: 2px 6px;
+                border-radius: 3px;
+                color: white;
+                font-size: 10px;
+                cursor: pointer;
+                border: none;
+                margin-left: 4px;
+                font-weight: 500;
+                transition: background-color 0.2s;
+            }
+
+            .apply-button {
+                background-color: #4caf50;
+            }
+
+            .apply-button:hover {
+                background-color: #45a049;
+            }
+
+            .reject-button {
+                background-color: #f44336;
+            }
+
+            .reject-button:hover {
+                background-color: #da190b;
+            }
+
+            /* Style for the phantom line */
+            .ace-phantom-line {
+                position: relative;
+                height: 16px;
+                width: 100%;
+                background-color: rgba(255, 0, 0, 0.2);
+                border-left: 3px solid #f44336;
+                pointer-events: none;
+                z-index: 20;
+                white-space: pre;
+                font-family: monospace;
+                padding-left: 4px;
+                color: #ddd;
+                box-sizing: border-box;
+                display: block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: 12px;
+                line-height: 16px;
+            }
+
+            /* For ACE editor highlighting */
+            .ace_add {
+                position: absolute;
+                width: 100%;
+                background-color: rgba(70, 149, 74, 0.2);
+                border-left: 3px solid #46954a;
+                z-index: 4;
+            }
+
+            .ace_remove {
+                position: absolute;
+                width: 100%;
+                background-color: rgba(244, 67, 54, 0.2);
+                border-left: 3px solid #f44336;
+                z-index: 4;
+            }
+
+            /* Added styles for options, review and status */
+            #options {
+                display: none;
+            }
+
+            #review {
+                position: absolute;
+                top: 94px; /* Adjust from top bar + margin */
+                left: 50%;
+                right: 0;
+                bottom: 0;
+                overflow: auto;
+                z-index: 5;
+            }
+
+            /* Remove status bar styles */
+            #status {
+                display: none;
+            }
+
+            #editor-toggle {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translateY(-50%);
+                z-index: 30;
+                transition: left 0.3s ease;
+            }
+
+            #toggle-btn {
+                background: #f0f2f5;
+                border: 1px solid #e0e0e0;
+                border-radius: 50%;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 14px;
+                z-index: 30;
+            }
+
+            /* Button container for accept/reject in diff */
+            .editor-buttons-container {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                display: flex;
+                gap: 4px;
+                z-index: 1000;
+            }
+
+            /* GitHub fork ribbon fix */
+            .github-fork-ribbon-wrapper {
+                z-index: 120;
+                position: fixed;
+            }
+
+            /* Fix for overlapping elements */
+            #editor-container.collapsed {
+                right: 80% !important;
+            }
+
+            #visualization-container.expanded {
+                left: 20% !important;
+            }
+
+            /* Fix for phantom lines in ACE editor */
+            .ace_layer {
+                z-index: 3;
+            }
+
+            .ace_gutter {
+                z-index: 1;
+            }
+
+            /* Fix for ACE editor margins */
+            .ace-twilight .ace_text-layer,
+            .ace_hidpi .ace_text-layer,
+            .ace_dark .ace_text-layer,
+            #editor,
+            .ace_editor {
+                margin: 0 !important;
+            }
+
+            /* Added styles for unified top bar */
+            #top-bar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                background-color: #f8f9fa;
+                border-bottom: 1px solid #e0e0e0;
+                display: flex;
+                align-items: center;
+                padding: 8px 16px;
+                height: 44px;
+                z-index: 100;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            }
+
+            #top-bar-left {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                flex-grow: 1;
+            }
+
+            #top-bar-right {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            #top-bar label {
+                font-size: 12px;
+                white-space: nowrap;
+                color: #555;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            #top-bar select,
+            #top-bar input[type="text"] {
+                padding: 4px 8px;
+                border: 1px solid #dde1e6;
+                border-radius: 4px;
+                font-size: 12px;
+                background-color: white;
+                transition: border-color 0.2s;
+            }
+
+            #top-bar select:focus,
+            #top-bar input[type="text"]:focus {
+                outline: none;
+                border-color: #1a73e8;
+                box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+            }
+
+            /* Logo for top bar */
+            .app-logo {
+                font-weight: bold;
+                font-size: 16px;
+                color: #1a73e8;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .app-logo svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            .divider {
+                height: 24px;
+                width: 1px;
+                background-color: #e0e0e0;
+                margin: 0 8px;
+            }
+
+            /* Button styling for top bar */
+            .top-bar-button {
+                padding: 4px 8px;
+                background: #1a73e8;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 500;
+                transition: background-color 0.2s;
+            }
+
+            .top-bar-button:hover {
+                background-color: #1765cc;
+            }
+
+            /* Fix for the shareurl input */
+            #shareurl {
+                display: none;
+                max-width: 160px;
+                padding: 4px 8px;
+                border: 1px solid #dde1e6;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+
+            /* API key input size constraint */
+            #api-key-input {
+                width: 180px;
+            }
+
+            /* Add dropdown for API key */
+            .api-key-container {
+                position: relative;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .api-key-toggle {
+                background: none;
+                border: none;
+                color: #1a73e8;
+                cursor: pointer;
+                padding: 4px;
+                display: flex;
+                align-items: center;
+                font-size: 12px;
+            }
+
+            .api-key-toggle:hover {
+                color: #1765cc;
+            }
+
+            /* Transitions for smoother panel movement */
+            #editor-container,
+            #chat-container,
+            #visualization-container {
+                transition: all 0.3s ease;
+            }
+
+            .png-container {
+                overscroll-behavior: contain;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="top-bar">
+            <div id="top-bar-left">
+                <div class="app-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#1a73e8">
+                        <path
+                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"
+                        />
+                    </svg>
+                    Graphviz Online AI
+                </div>
+                <div class="divider"></div>
+
+                <div class="api-key-container">
+                    <button id="api-key-toggle" class="api-key-toggle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
+                            />
+                        </svg>
+                        API Key
+                    </button>
+                    <div
+                        id="api-key-dropdown"
+                        style="
+                            display: none;
+                            position: absolute;
+                            top: 30px;
+                            left: 0;
+                            background: white;
+                            padding: 12px;
+                            border-radius: 4px;
+                            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                            z-index: 150;
+                            width: 240px;
+                        "
+                    >
+                        <div style="margin-bottom: 8px; font-size: 12px">Enter your Groq API key:</div>
+                        <div style="display: flex; gap: 4px">
+                            <input type="text" id="api-key-input" placeholder="Enter your API key" />
+                            <button id="api-key-save" class="top-bar-button">Save</button>
+                        </div>
+                    </div>
+                </div>
+
+                <label id="engine">
+                    Engine:
+                    <select>
+                        <option>circo</option>
+                        <option selected="">dot</option>
+                        <option>fdp</option>
+                        <option>nop</option>
+                        <option>nop2</option>
+                        <option>neato</option>
+                        <option>sfdp</option>
+                        <option>twopi</option>
+                        <option>osage</option>
+                        <option>patchwork</option>
+                    </select>
+                </label>
+
+                <label id="format">
+                    Format:
+                    <select>
+                        <option selected="">svg</option>
+                        <option>png</option>
+                        <option>json</option>
+                        <option>xdot</option>
+                        <option>plain</option>
+                        <option>ps</option>
+                    </select>
+                </label>
+
+                <label id="raw" class="disabled"> <input type="checkbox" disabled="" /> Show raw </label>
+            </div>
+            <div id="top-bar-right">
+                <a href="#" target="_blank" id="download" class="top-bar-button">Download</a>
+                <button type="button" id="share" class="top-bar-button">Share</button>
+                <input type="input" value="" id="shareurl" style="display: none; max-width: 140px" />
+            </div>
+        </div>
+
+        <div id="editor-toggle">
+            <button id="toggle-btn">◀</button>
+        </div>
+        <div id="chat-container">
+            <div id="chat-messages"></div>
+            <div id="chat-input-container">
+                <input type="text" id="chat-input" value="create a basic ER Chen diagram" />
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+        <div id="editor-container">
+            <pre id="editor">
+digraph G {
 
   subgraph cluster_0 {
     style=filled;
@@ -202,428 +674,1709 @@
 
   start [shape=Mdiamond];
   end [shape=Msquare];
-}</pre>
-  <div id="options">
-    <label id="engine">
-      Engine:
-      <select>
-        <option>circo</option>
-        <option selected="">dot</option>
-        <option>fdp</option>
-        <option>nop</option>
-        <option>nop2</option>
-        <option>neato</option>
-        <option>sfdp</option>
-        <option>twopi</option>
-        <option>osage</option>
-        <option>patchwork</option>
-      </select>
-    </label>
+}</pre
+            >
+        </div>
+        <div id="visualization-container">
+            <div id="svg-container"></div>
+        </div>
+        <div id="options">
+            <!-- This is now hidden and moved to the top bar -->
+        </div>
+        <div id="review">
+            <div id="error"></div>
+        </div>
 
-    <label id="format">
-      Format:
-      <select>
-        <option selected="">svg</option>
-        <option>png</option>
-        <option>json</option>
-        <option>xdot</option>
-        <option>plain</option>
-        <option>ps</option>
-      </select>
-    </label>
+        <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"
+            integrity="sha512-qtX0GLM3qX8rxJN1gyDfcnMFFrKvixfoEOwbBib9VafR5vbChV5LeE5wSI/x+IlCkTY5ZFddFDCCfaVJJNnuKQ=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"
+        ></script>
+        <script src="viz-standalone.js"></script>
+        <script src="svg-pan-zoom.min.js" type="text/javascript" charset="utf-8"></script>
+        <script>
+            const editorElement = document.getElementById("editor");
+            const editorContainer = document.getElementById("editor-container");
+            const chatContainer = document.getElementById("chat-container");
+            const reviewElement = document.getElementById("review");
+            const toggleBtn = document.getElementById("toggle-btn");
+            const toggleContainer = document.getElementById("editor-toggle");
+            const visualizationContainer = document.getElementById("visualization-container");
+            const topBar = document.getElementById("top-bar");
+            const engineEl = document.querySelector("#engine select");
+            const formatEl = document.querySelector("#format select");
+            const rawEl = document.querySelector("#raw input");
+            const shareEl = document.getElementById("share");
+            const shareURLEl = document.getElementById("shareurl");
+            const downloadBtn = document.getElementById("download");
+            const apiKeyToggle = document.getElementById("api-key-toggle");
+            const apiKeyDropdown = document.getElementById("api-key-dropdown");
 
-    <label id="raw" class="disabled">
-      <input type="checkbox" disabled=""> Show raw output
-    </label>
+            // Handle API key dropdown toggle
+            apiKeyToggle.addEventListener("click", (e) => {
+                e.stopPropagation();
+                apiKeyDropdown.style.display = apiKeyDropdown.style.display === "none" ? "block" : "none";
+            });
 
-    <label>
-      <a href="#" target="_blank" id="download">Download</a>
-    </label>
+            // Close dropdown when clicking outside
+            document.addEventListener("click", (e) => {
+                if (!apiKeyDropdown.contains(e.target) && e.target !== apiKeyToggle) {
+                    apiKeyDropdown.style.display = "none";
+                }
+            });
 
-    <label>
-      <input type="button" value="Share" id="share">
-    </label>
+            let isCollapsed = false;
 
-    <input type="input" value="" id="shareurl">
+            toggleBtn.addEventListener("click", () => {
+                isCollapsed = !isCollapsed;
 
-  </div>
-  <div id="review">
-    <div id="error"></div>
-  </div>
-  <div id="status"></div>
-  <div class="github-fork-ribbon-wrapper right">
-    <div class="github-fork-ribbon">
-      <a href="https://github.com/dreampuf/graphvizonline">Fork me on GitHub</a>
-    </div>
-  </div>
+                if (isCollapsed) {
+                    // Collapse editor and chat
+                    editorContainer.classList.add("collapsed");
+                    editorContainer.style.right = "80%";
 
-  <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"
-    integrity="sha512-qtX0GLM3qX8rxJN1gyDfcnMFFrKvixfoEOwbBib9VafR5vbChV5LeE5wSI/x+IlCkTY5ZFddFDCCfaVJJNnuKQ=="
-    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="viz-standalone.js"></script>
-  <script src="svg-pan-zoom.min.js" type="text/javascript" charset="utf-8"></script>
-  <script>
-    const editorElement = document.getElementById('editor');
-    const reviewElement = document.getElementById('review');
-    const optionsElement = document.getElementById('options');
-    const toggleBtn = document.getElementById('toggle-btn');
+                    // Also collapse the chat
+                    chatContainer.classList.add("collapsed");
+                    chatContainer.style.right = "80%";
 
-    let isCollapsed = false;
+                    // Expand visualization
+                    visualizationContainer.style.left = "20%";
+                    visualizationContainer.classList.add("expanded");
+                    reviewElement.classList.add("expanded");
 
-    toggleBtn.addEventListener('click', () => {
-      isCollapsed = !isCollapsed;
+                    // Move toggle button
+                    toggleContainer.style.left = "20%";
+                    toggleBtn.innerHTML = "▶";
+                } else {
+                    // Restore editor and chat
+                    editorContainer.classList.remove("collapsed");
+                    editorContainer.style.right = "50%";
 
-      if (isCollapsed) {
-        editorElement.classList.add('collapsed');
-        reviewElement.classList.add('expanded');
-        optionsElement.classList.add('expanded');
-        toggleBtn.innerHTML = '▶';
-      } else {
-        editorElement.classList.remove('collapsed');
-        reviewElement.classList.remove('expanded');
-        optionsElement.classList.remove('expanded');
-        toggleBtn.innerHTML = '◀';
-      }
+                    // Also restore the chat
+                    chatContainer.classList.remove("collapsed");
+                    chatContainer.style.right = "50%";
 
-      setTimeout(resizeSVG, 300);
-    });
+                    // Restore visualization
+                    visualizationContainer.style.left = "50%";
+                    visualizationContainer.classList.remove("expanded");
+                    reviewElement.classList.remove("expanded");
 
-    window.addEventListener('resize', resizeSVG);
+                    // Move toggle button back
+                    toggleContainer.style.left = "50%";
+                    toggleBtn.innerHTML = "◀";
+                }
 
-    function resizeSVG() {
-      const svg = document.querySelector('#review svg');
-      if (svg) {
-        const panZoom = svgPanZoom(svg);
-        panZoom.resize();
-        panZoom.fit();
-        panZoom.center();
+                setTimeout(resizeSVG, 300);
+            });
 
-        svg.style.width = '100%';
-        svg.style.height = '100%';
-      }
-    }
+            window.addEventListener("resize", resizeSVG);
 
-    (function (document) {
-      //http://stackoverflow.com/a/10372280/398634
-      window.URL = window.URL || window.webkitURL;
-      var el_stetus = document.getElementById("status"),
-        t_stetus = -1,
-        reviewer = document.getElementById("review"),
-        scale = window.devicePixelRatio || 1,
-        downloadBtn = document.getElementById("download"),
-        editor = ace.edit("editor"),
-        lastHD = -1,
-        worker = null,
-        parser = new DOMParser(),
-        showError = null,
-        formatEl = document.querySelector("#format select"),
-        engineEl = document.querySelector("#engine select"),
-        rawEl = document.querySelector("#raw input"),
-        shareEl = document.querySelector("#share"),
-        shareURLEl = document.querySelector("#shareurl"),
-        errorEl = document.querySelector("#error");
+            function resizeSVG() {
+                const svg = document.querySelector("#visualization-container svg, #review svg");
+                if (svg) {
+                    try {
+                        // First set proper dimensions
+                        svg.style.width = "100%";
+                        svg.style.height = "100%";
+                        svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
-      function show_status(text, hide) {
-        hide = hide || 0;
-        clearTimeout(t_stetus);
-        el_stetus.innerHTML = text;
-        if (hide) {
-          t_stetus = setTimeout(function () {
-            el_stetus.innerHTML = "";
-          }, hide);
-        }
-      }
+                        // Then update the pan-zoom instance
+                        try {
+                            const panZoom = svgPanZoom(svg);
+                            if (panZoom) {
+                                panZoom.resize();
+                                panZoom.fit();
+                                panZoom.center();
 
-      function show_error(e) {
-        console.trace();
-        show_status("error", 500);
-        reviewer.classList.remove("working");
-        reviewer.classList.add("error");
-        var message = e.message === undefined ? "An error occurred while processing the graph input." : e.message;
-        while (errorEl.firstChild) {
-          errorEl.removeChild(errorEl.firstChild);
-        }
-        errorEl.appendChild(document.createTextNode(message));
-      }
-
-      function svgXmlToImage(svgXml, callback) {
-        var pngImage = new Image(), svgImage = new Image();
-
-        svgImage.onload = function () {
-          var canvas = document.createElement("canvas");
-          canvas.width = svgImage.width * scale;
-          canvas.height = svgImage.height * scale;
-
-          var context = canvas.getContext("2d");
-          context.drawImage(svgImage, 0, 0, canvas.width, canvas.height);
-
-          pngImage.src = canvas.toDataURL("image/png");
-          pngImage.width = svgImage.width;
-          pngImage.height = svgImage.height;
-
-          if (callback !== undefined) {
-            callback(null, pngImage);
-          }
-        }
-
-        svgImage.onerror = function (e) {
-          if (callback !== undefined) {
-            callback(e);
-          }
-        }
-        svgImage.src = svgXml;
-      }
-
-      function copyShareURL(e) {
-        let content = encodeURIComponent(editor.getSession().getDocument().getValue());
-        const longUrl = new URL(location.href);
-        longUrl.hash = content;
-
-        shareEl.disabled = true;
-        let n = 0;
-        let animateId = setInterval(()=> { shareEl.value = "Loading" + ".".repeat(n++%3)}, 300)
-        // cors for is.gd
-        fetch("https://api.allorigins.win/get?url=" + encodeURIComponent("https://is.gd/create.php?" + new URLSearchParams({
-          format: 'simple',
-          url: longUrl.toString(),
-        }).toString()))
-          .then((r) => {
-            if (r.ok) return r.json()
-            return new Error("network issues");
-          })
-          .then((rs) => {
-            shareURLEl.style.display = "inline";
-            shareURLEl.value = rs.contents;
-          }).catch((err) => {
-            const compressedContent = LZString.compressToEncodedURIComponent(content);
-            const compressedUrl = new URL(location.href);
-            compressedUrl.searchParams.append("compressed", compressedContent);
-            compressedUrl.hash = "";
-            shareURLEl.style.display = "inline";
-            shareURLEl.value = compressedUrl.toString();
-          }).finally(()=>{
-            clearInterval(animateId);
-            shareEl.value = "Share";
-            shareEl.disabled = false;
-          })
-      }
-
-      function copyToClipboard(str) {
-        const el = document.createElement('textarea');
-        el.value = str;
-        el.setAttribute('readonly', '');
-        el.style.position = 'absolute';
-        el.style.left = '-9999px';
-        document.body.appendChild(el);
-        const selected =
-          document.getSelection().rangeCount > 0
-            ? document.getSelection().getRangeAt(0)
-            : false;
-        el.select();
-        var result = document.execCommand('copy')
-        document.body.removeChild(el);
-        if (selected) {
-          document.getSelection().removeAllRanges();
-          document.getSelection().addRange(selected);
-        }
-        return result;
-      };
-
-      function renderGraph() {
-        reviewer.classList.add("working");
-        reviewer.classList.remove("error");
-
-        show_status("rendering...");
-        Viz.instance().then(function (viz) {
-          let dotContent = editor.getSession().getDocument().getValue();
-          let options = {
-            format: formatEl.value,
-            engine: engineEl.value,
-          };
-          let result = null;
-
-          if (["svg", "png"].indexOf(formatEl.value) > -1) {
-            result = viz.renderSVGElement(dotContent, options);
-          } else {
-            result = viz.render(dotContent, options);
-          }
-
-          if (result.status !== undefined && result.status != "success") {
-            show_error(result.errors && result.errors.length > 0 && result.errors[0] || result);
-          } else {
-            updateOutput(result);
-          }
-        }).catch((err) => {
-          show_error(err);
-        }).finally(() => {
-          reviewer.classList.remove("working");
-          show_status("done", 500)
-        });
-      }
-
-      function updateState() {
-        const updatedUrl = new URL(window.location)
-        // Hash
-        const content = encodeURIComponent(editor.getSession().getDocument().getValue());
-        updatedUrl.hash = content
-        // Search params
-        updatedUrl.searchParams.set("engine", engineEl.value)
-        history.pushState({ "content": content, "engine": engineEl.value }, "", updatedUrl.toString())
-      }
-
-      function updateOutput(result) {
-        if (formatEl.value === "svg") {
-          document.querySelector("#raw").classList.remove("disabled");
-          rawEl.disabled = false;
-        } else {
-          document.querySelector("#raw").classList.add("disabled");
-          rawEl.disabled = true;
-        }
-
-        var text = reviewer.querySelector("#text");
-        if (text) {
-          reviewer.removeChild(text);
-        }
-
-        var a = reviewer.querySelector("a");
-        if (a) {
-          reviewer.removeChild(a);
-        }
-
-        if (!result) {
-          return;
-        }
-
-        reviewer.classList.remove("working");
-        reviewer.classList.remove("error");
-
-        if (formatEl.value == "svg" && !rawEl.checked) {
-          var serializer = new XMLSerializer();
-          var source = serializer.serializeToString(result);
-          // https://stackoverflow.com/questions/18925210/download-blob-content-using-specified-charset
-          //const blob = new Blob(["\ufeff", svg], {type: 'image/svg+xml;charset=utf-8'});
-          const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
-          downloadBtn.href = url;
-          downloadBtn.download = "graphviz.svg";
-          var a = document.createElement("a");
-          a.appendChild(result);
-          reviewer.appendChild(a);
-          svgPanZoom(result, {
-            zoomEnabled: true,
-            controlIconsEnabled: true,
-            fit: true,
-            center: true,
-          });
-        } else if (formatEl.value == "png") {
-          var serializer = new XMLSerializer();
-          var source = serializer.serializeToString(result);
-          let resultWithPNGHeader = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(source)));
-          svgXmlToImage(resultWithPNGHeader, function (err, image) {
-            if (err) {
-              show_error(err)
-              return
-            }
-            image.setAttribute("title", "graphviz");
-            downloadBtn.href = image.src;
-            downloadBtn.download = "graphviz.png";
-            var a = document.createElement("a");
-            a.appendChild(image);
-            reviewer.appendChild(a);
-          })
-        } else {
-          var text = document.createElement("div");
-          text.id = "text";
-          if (formatEl.value == "svg") {
-            let serializer = new XMLSerializer();
-            result = serializer.serializeToString(result);
-          } else {
-            result = result.output;
-          }
-          text.appendChild(document.createTextNode(result));
-          reviewer.appendChild(text);
-        }
-
-        updateState()
-      }
-
-      editor.setTheme("ace/theme/twilight");
-      editor.getSession().setMode("ace/mode/dot");
-      editor.getSession().on("change", function () {
-        clearTimeout(lastHD);
-        lastHD = setTimeout(renderGraph, 1500);
-      });
-
-      window.onpopstate = function (event) {
-        if (event.state != null && event.state.content != undefined) {
-          editor.getSession().setValue(decodeURIComponent(event.state.content));
-        }
-      };
-
-      formatEl.addEventListener("change", renderGraph);
-      engineEl.addEventListener("change", renderGraph);
-      rawEl.addEventListener("change", renderGraph);
-      share.addEventListener("click", copyShareURL);
-
-      // Since apparently HTMLCollection does not implement the oh so convenient array functions
-      HTMLOptionsCollection.prototype.indexOf = function (name) {
-        for (let i = 0; i < this.length; i++) {
-          if (this[i].value == name) {
-            return i;
-          }
-        }
-
-        return -1;
-      };
-
-      /* parsing from URL sharing */
-      const params = new URLSearchParams(location.search.substring(1));
-      if (params.has('engine')) {
-        const engine = params.get('engine');
-        const index = engineEl.options.indexOf(engine);
-        if (index > -1) { // if index exists
-          engineEl.selectedIndex = index;
-        } else {
-          show_error({ message: `invalid engine ${engine} selected` });
-        }
-      }
-
-      if (params.has("presentation")) {
-        document.body.classList.add("presentation");
-      }
-
-      if (params.has('raw')) {
-        editor.getSession().setValue(params.get('raw'));
-        renderGraph();
-      } else if (params.has('compressed')) {
-        const compressed = params.get('compressed');
-        editor.getSession().setValue(LZString.decompressFromEncodedURIComponent(compressed));
-      } else if (params.has('url')) {
-        const url = params.get('url');
-        let ok = false;
-        fetch(url)
-          .then(res => {
-            ok = res.ok;
-            return res.text();
-          })
-          .then(res => {
-            if (!ok) {
-              throw { message: res };
+                                // Make sure control icons are properly positioned
+                                setTimeout(() => {
+                                    const controls = document.querySelectorAll(".svg-pan-zoom-control");
+                                    controls.forEach((control) => {
+                                        control.style.position = "absolute";
+                                        control.style.bottom = "20px";
+                                        control.style.right = "20px";
+                                        control.style.transform = "none";
+                                        control.style.zIndex = "50";
+                                    });
+                                }, 100);
+                            }
+                        } catch (err) {
+                            console.warn("Could not update existing pan-zoom instance, creating new one:", err);
+                            // Initialize a new pan-zoom instance if we can't update the existing one
+                            svgPanZoom(svg, {
+                                zoomEnabled: true,
+                                controlIconsEnabled: true,
+                                fit: true,
+                                center: true,
+                                minZoom: 0.1,
+                                maxZoom: 10,
+                                panEnabled: true,
+                                dblClickZoomEnabled: true,
+                                mouseWheelZoomEnabled: true,
+                                preventMouseEventsDefault: true,
+                                zoomScaleSensitivity: 0.3,
+                            });
+                        }
+                    } catch (err) {
+                        console.error("Error updating SVG pan-zoom:", err);
+                    }
+                }
             }
 
-            editor.getSession().setValue(res);
-            renderGraph();
-          }).catch(e => {
-            show_error(e);
-          });
-      } else if (location.hash.length > 1) {
-        editor.getSession().setValue(decodeURIComponent(location.hash.substring(1)));
-      } else if (editor.getValue()) { // Init
-        renderGraph();
-      }
+            (function (document) {
+                //http://stackoverflow.com/a/10372280/398634
+                window.URL = window.URL || window.webkitURL;
+                var el_stetus = null, // Status element no longer exists
+                    t_stetus = -1,
+                    reviewer = document.getElementById("review"),
+                    scale = window.devicePixelRatio || 1,
+                    downloadBtn = document.getElementById("download"),
+                    editor = ace.edit("editor"),
+                    lastHD = -1,
+                    worker = null,
+                    parser = new DOMParser(),
+                    showError = null,
+                    formatEl = document.querySelector("#format select"),
+                    engineEl = document.querySelector("#engine select"),
+                    rawEl = document.querySelector("#raw input"),
+                    shareEl = document.querySelector("#share"),
+                    shareURLEl = document.querySelector("#shareurl"),
+                    errorEl = document.querySelector("#error");
 
-    })(document);
-  </script>
-</body>
+                function show_status(text, hide) {
+                    // Since status bar is removed, we're using console instead
+                    console.log("Status:", text);
+                    // Clear any pending timeout
+                    clearTimeout(t_stetus);
+                }
 
+                function show_error(e) {
+                    console.trace();
+                    show_status("error", 500);
+                    reviewer.classList.remove("working");
+                    reviewer.classList.add("error");
+                    var message = e.message === undefined ? "An error occurred while processing the graph input." : e.message;
+                    while (errorEl.firstChild) {
+                        errorEl.removeChild(errorEl.firstChild);
+                    }
+                    errorEl.appendChild(document.createTextNode(message));
+                }
+
+                function svgXmlToImage(svgXml, callback) {
+                    var pngImage = new Image(),
+                        svgImage = new Image();
+
+                    svgImage.onload = function () {
+                        var canvas = document.createElement("canvas");
+                        canvas.width = svgImage.width * scale;
+                        canvas.height = svgImage.height * scale;
+
+                        var context = canvas.getContext("2d");
+                        context.drawImage(svgImage, 0, 0, canvas.width, canvas.height);
+
+                        pngImage.src = canvas.toDataURL("image/png");
+                        pngImage.width = svgImage.width;
+                        pngImage.height = svgImage.height;
+
+                        if (callback !== undefined) {
+                            callback(null, pngImage);
+                        }
+                    };
+
+                    svgImage.onerror = function (e) {
+                        if (callback !== undefined) {
+                            callback(e);
+                        }
+                    };
+                    svgImage.src = svgXml;
+                }
+
+                function copyShareURL(e) {
+                    let content = encodeURIComponent(editor.getSession().getDocument().getValue());
+                    const longUrl = new URL(location.href);
+                    longUrl.hash = content;
+
+                    shareEl.disabled = true;
+                    let n = 0;
+                    let animateId = setInterval(() => {
+                        shareEl.value = "Loading" + ".".repeat(n++ % 3);
+                    }, 300);
+                    // cors for is.gd
+                    fetch(
+                        "https://api.allorigins.win/get?url=" +
+                            encodeURIComponent(
+                                "https://is.gd/create.php?" +
+                                    new URLSearchParams({
+                                        format: "simple",
+                                        url: longUrl.toString(),
+                                    }).toString()
+                            )
+                    )
+                        .then((r) => {
+                            if (r.ok) return r.json();
+                            return new Error("network issues");
+                        })
+                        .then((rs) => {
+                            shareURLEl.style.display = "inline";
+                            shareURLEl.value = rs.contents;
+                        })
+                        .catch((err) => {
+                            const compressedContent = LZString.compressToEncodedURIComponent(content);
+                            const compressedUrl = new URL(location.href);
+                            compressedUrl.searchParams.append("compressed", compressedContent);
+                            compressedUrl.hash = "";
+                            shareURLEl.style.display = "inline";
+                            shareURLEl.value = compressedUrl.toString();
+                        })
+                        .finally(() => {
+                            clearInterval(animateId);
+                            shareEl.value = "Share";
+                            shareEl.disabled = false;
+                        });
+                }
+
+                function copyToClipboard(str) {
+                    const el = document.createElement("textarea");
+                    el.value = str;
+                    el.setAttribute("readonly", "");
+                    el.style.position = "absolute";
+                    el.style.left = "-9999px";
+                    document.body.appendChild(el);
+                    const selected = document.getSelection().rangeCount > 0 ? document.getSelection().getRangeAt(0) : false;
+                    el.select();
+                    var result = document.execCommand("copy");
+                    document.body.removeChild(el);
+                    if (selected) {
+                        document.getSelection().removeAllRanges();
+                        document.getSelection().addRange(selected);
+                    }
+                    return result;
+                }
+
+                // Expose renderGraph to the global scope
+                window.renderGraph = function () {
+                    reviewer.classList.add("working");
+                    reviewer.classList.remove("error");
+
+                    show_status("rendering...");
+                    Viz.instance()
+                        .then(function (viz) {
+                            let dotContent = editor.getSession().getDocument().getValue();
+                            let options = {
+                                format: formatEl.value,
+                                engine: engineEl.value,
+                            };
+                            let result = null;
+
+                            if (["svg", "png"].indexOf(formatEl.value) > -1) {
+                                result = viz.renderSVGElement(dotContent, options);
+                            } else {
+                                result = viz.render(dotContent, options);
+                            }
+
+                            if (result.status !== undefined && result.status != "success") {
+                                show_error((result.errors && result.errors.length > 0 && result.errors[0]) || result);
+                            } else {
+                                updateOutput(result);
+                            }
+                        })
+                        .catch((err) => {
+                            show_error(err);
+                        })
+                        .finally(() => {
+                            reviewer.classList.remove("working");
+                            show_status("done", 500);
+                        });
+                };
+
+                function updateState() {
+                    const updatedUrl = new URL(window.location);
+                    // Hash
+                    const content = encodeURIComponent(editor.getSession().getDocument().getValue());
+                    updatedUrl.hash = content;
+                    // Search params
+                    updatedUrl.searchParams.set("engine", engineEl.value);
+                    history.pushState({ content: content, engine: engineEl.value }, "", updatedUrl.toString());
+                }
+
+                function updateOutput(result) {
+                    if (formatEl.value === "svg") {
+                        document.querySelector("#raw").classList.remove("disabled");
+                        rawEl.disabled = false;
+                    } else {
+                        document.querySelector("#raw").classList.add("disabled");
+                        rawEl.disabled = true;
+                    }
+
+                    var text = reviewer.querySelector("#text");
+                    if (text) {
+                        reviewer.removeChild(text);
+                    }
+
+                    var a = reviewer.querySelector("a");
+                    if (a) {
+                        reviewer.removeChild(a);
+                    }
+
+                    // Also clean up visualization container
+                    var svgContainer = document.getElementById("svg-container");
+                    while (svgContainer.firstChild) {
+                        svgContainer.removeChild(svgContainer.firstChild);
+                    }
+
+                    if (!result) {
+                        return;
+                    }
+
+                    reviewer.classList.remove("working");
+                    reviewer.classList.remove("error");
+
+                    if (formatEl.value == "svg" && !rawEl.checked) {
+                        var serializer = new XMLSerializer();
+                        var source = serializer.serializeToString(result);
+                        // https://stackoverflow.com/questions/18925210/download-blob-content-using-specified-charset
+                        //const blob = new Blob(["\ufeff", svg], {type: 'image/svg+xml;charset=utf-8'});
+                        const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+                        downloadBtn.href = url;
+                        downloadBtn.download = "graphviz.svg";
+
+                        // Use the dedicated visualization container
+                        var a = document.createElement("a");
+                        a.appendChild(result);
+                        svgContainer.appendChild(a);
+
+                        // Apply svg-pan-zoom with proper configuration
+                        const panZoomInstance = svgPanZoom(result, {
+                            zoomEnabled: true,
+                            controlIconsEnabled: true,
+                            fit: true,
+                            center: true,
+                            minZoom: 0.1,
+                            maxZoom: 10,
+                            panEnabled: true,
+                            dblClickZoomEnabled: true,
+                            mouseWheelZoomEnabled: true,
+                            preventMouseEventsDefault: true,
+                            zoomScaleSensitivity: 0.3,
+                            beforeZoom: function () {
+                                return true;
+                            },
+                            beforePan: function () {
+                                return true;
+                            },
+                            onZoom: function (newZoom) {
+                                // Prevent propagation of mouse wheel events
+                                event.stopPropagation();
+                                event.preventDefault();
+                            },
+                            customEventsHandler: {
+                                init: function (options) {
+                                    // Init is called only once
+                                    console.log("Custom events handler initialized");
+
+                                    // Fix SVG controls
+                                    setTimeout(function () {
+                                        const controls = document.querySelectorAll(".svg-pan-zoom-control");
+                                        controls.forEach((control) => {
+                                            control.style.position = "absolute";
+                                            control.style.bottom = "20px";
+                                            control.style.right = "20px";
+                                            control.style.transform = "none";
+                                        });
+                                    }, 100);
+
+                                    // Add wheel event handler to visualization container to prevent propagation
+                                    const svgContainer = document.getElementById("svg-container");
+                                    svgContainer.addEventListener(
+                                        "wheel",
+                                        function (evt) {
+                                            evt.stopPropagation();
+                                            // Don't prevent default here, let svg-pan-zoom handle it
+                                        },
+                                        { passive: false }
+                                    );
+                                },
+                                haltEventListeners: ["mousemove", "mouseup"],
+                                destroy: function () {},
+                            },
+                        });
+
+                        // Ensure svg has proper sizing
+                        result.style.width = "100%";
+                        result.style.height = "100%";
+                        result.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+                        // Force reposition of the controls
+                        setTimeout(() => {
+                            const controls = document.querySelector(".svg-pan-zoom-control");
+                            if (controls) {
+                                controls.style.position = "absolute";
+                                controls.style.bottom = "20px";
+                                controls.style.right = "20px";
+                                controls.style.transform = "none";
+                                controls.style.zIndex = "50";
+                            }
+                        }, 200);
+                    } else if (formatEl.value == "png") {
+                        var serializer = new XMLSerializer();
+                        var source = serializer.serializeToString(result);
+                        let resultWithPNGHeader = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(source)));
+                        svgXmlToImage(resultWithPNGHeader, function (err, image) {
+                            if (err) {
+                                show_error(err);
+                                return;
+                            }
+                            image.setAttribute("title", "graphviz");
+                            downloadBtn.href = image.src;
+                            downloadBtn.download = "graphviz.png";
+
+                            // Create a container div to better handle PNG visualization
+                            const pngContainer = document.createElement("div");
+                            pngContainer.className = "png-container";
+                            pngContainer.style.position = "relative";
+                            pngContainer.style.width = "100%";
+                            pngContainer.style.height = "100%";
+                            pngContainer.style.display = "flex";
+                            pngContainer.style.justifyContent = "center";
+                            pngContainer.style.alignItems = "center";
+                            pngContainer.style.overflow = "hidden";
+                            pngContainer.style.overscrollBehavior = "contain"; // Prevent scroll propagation
+
+                            // Style the image for panning
+                            image.style.maxWidth = "100%";
+                            image.style.maxHeight = "100%";
+                            image.style.cursor = "move";
+                            image.style.userSelect = "none";
+                            image.style.position = "relative";
+
+                            // Add the image to the container
+                            pngContainer.appendChild(image);
+
+                            // Add the container to the svg-container
+                            var svgContainer = document.getElementById("svg-container");
+                            svgContainer.appendChild(pngContainer);
+
+                            // Add simple drag functionality for PNG
+                            let isDragging = false;
+                            let startX, startY, startLeft, startTop;
+                            let scale = 1;
+
+                            const setImageTransform = () => {
+                                image.style.transform = `scale(${scale})`;
+                            };
+
+                            // Add zoom controls
+                            const zoomControls = document.createElement("div");
+                            zoomControls.style.position = "absolute";
+                            zoomControls.style.bottom = "20px";
+                            zoomControls.style.right = "20px";
+                            zoomControls.style.background = "rgba(255, 255, 255, 0.8)";
+                            zoomControls.style.padding = "5px";
+                            zoomControls.style.borderRadius = "4px";
+                            zoomControls.style.display = "flex";
+                            zoomControls.style.flexDirection = "column";
+                            zoomControls.style.gap = "5px";
+                            zoomControls.style.zIndex = "50";
+                            zoomControls.style.boxShadow = "0 1px 4px rgba(0, 0, 0, 0.2)";
+
+                            const createButton = (text, onClick) => {
+                                const button = document.createElement("button");
+                                button.textContent = text;
+                                button.style.border = "none";
+                                button.style.background = "#1a73e8";
+                                button.style.color = "white";
+                                button.style.width = "30px";
+                                button.style.height = "30px";
+                                button.style.borderRadius = "4px";
+                                button.style.fontSize = "18px";
+                                button.style.cursor = "pointer";
+                                button.style.display = "flex";
+                                button.style.justifyContent = "center";
+                                button.style.alignItems = "center";
+                                button.addEventListener("click", onClick);
+                                return button;
+                            };
+
+                            // Zoom in button
+                            const zoomInBtn = createButton("+", () => {
+                                scale = Math.min(scale * 1.2, 10);
+                                setImageTransform();
+                            });
+
+                            // Zoom out button
+                            const zoomOutBtn = createButton("-", () => {
+                                scale = Math.max(scale / 1.2, 0.1);
+                                setImageTransform();
+                            });
+
+                            // Reset button
+                            const resetBtn = createButton("⟲", () => {
+                                scale = 1;
+                                image.style.left = "0px";
+                                image.style.top = "0px";
+                                setImageTransform();
+                            });
+
+                            zoomControls.appendChild(zoomInBtn);
+                            zoomControls.appendChild(zoomOutBtn);
+                            zoomControls.appendChild(resetBtn);
+                            pngContainer.appendChild(zoomControls);
+
+                            // Handle mouse wheel for zooming
+                            pngContainer.addEventListener("wheel", (e) => {
+                                e.preventDefault();
+                                if (e.deltaY < 0) {
+                                    scale = Math.min(scale * 1.1, 10);
+                                } else {
+                                    scale = Math.max(scale / 1.1, 0.1);
+                                }
+                                setImageTransform();
+                            });
+
+                            // Mouse events for dragging
+                            pngContainer.addEventListener("mousedown", (e) => {
+                                isDragging = true;
+                                startX = e.clientX;
+                                startY = e.clientY;
+                                startLeft = parseInt(image.style.left || "0");
+                                startTop = parseInt(image.style.top || "0");
+                                pngContainer.style.cursor = "grabbing";
+                            });
+
+                            document.addEventListener("mousemove", (e) => {
+                                if (!isDragging) return;
+                                const dx = e.clientX - startX;
+                                const dy = e.clientY - startY;
+                                image.style.left = startLeft + dx + "px";
+                                image.style.top = startTop + dy + "px";
+                            });
+
+                            document.addEventListener("mouseup", () => {
+                                isDragging = false;
+                                pngContainer.style.cursor = "default";
+                            });
+                        });
+                    } else {
+                        var text = document.createElement("div");
+                        text.id = "text";
+                        if (formatEl.value == "svg") {
+                            let serializer = new XMLSerializer();
+                            result = serializer.serializeToString(result);
+                        } else {
+                            result = result.output;
+                        }
+                        text.appendChild(document.createTextNode(result));
+                        reviewer.appendChild(text);
+                    }
+
+                    updateState();
+                }
+
+                editor.setTheme("ace/theme/twilight");
+                editor.getSession().setMode("ace/mode/dot");
+                editor.getSession().on("change", function () {
+                    clearTimeout(lastHD);
+                    lastHD = setTimeout(renderGraph, 1500);
+                });
+
+                window.onpopstate = function (event) {
+                    if (event.state != null && event.state.content != undefined) {
+                        editor.getSession().setValue(decodeURIComponent(event.state.content));
+                    }
+                };
+
+                formatEl.addEventListener("change", renderGraph);
+                engineEl.addEventListener("change", renderGraph);
+                rawEl.addEventListener("change", renderGraph);
+                shareEl.addEventListener("click", copyShareURL);
+
+                // Since apparently HTMLCollection does not implement the oh so convenient array functions
+                HTMLOptionsCollection.prototype.indexOf = function (name) {
+                    for (let i = 0; i < this.length; i++) {
+                        if (this[i].value == name) {
+                            return i;
+                        }
+                    }
+
+                    return -1;
+                };
+
+                /* parsing from URL sharing */
+                const params = new URLSearchParams(location.search.substring(1));
+                if (params.has("engine")) {
+                    const engine = params.get("engine");
+                    const index = engineEl.options.indexOf(engine);
+                    if (index > -1) {
+                        // if index exists
+                        engineEl.selectedIndex = index;
+                    } else {
+                        show_error({ message: `invalid engine ${engine} selected` });
+                    }
+                }
+
+                if (params.has("presentation")) {
+                    document.body.classList.add("presentation");
+                }
+
+                if (params.has("raw")) {
+                    editor.getSession().setValue(params.get("raw"));
+                    renderGraph();
+                } else if (params.has("compressed")) {
+                    const compressed = params.get("compressed");
+                    editor.getSession().setValue(LZString.decompressFromEncodedURIComponent(compressed));
+                } else if (params.has("url")) {
+                    const url = params.get("url");
+                    let ok = false;
+                    fetch(url)
+                        .then((res) => {
+                            ok = res.ok;
+                            return res.text();
+                        })
+                        .then((res) => {
+                            if (!ok) {
+                                throw { message: res };
+                            }
+
+                            editor.getSession().setValue(res);
+                            renderGraph();
+                        })
+                        .catch((e) => {
+                            show_error(e);
+                        });
+                } else if (location.hash.length > 1) {
+                    editor.getSession().setValue(decodeURIComponent(location.hash.substring(1)));
+                } else if (editor.getValue()) {
+                    // Init
+                    renderGraph();
+                }
+            })(document);
+
+            // Chat functionality
+            const chatMessages = document.getElementById("chat-messages");
+            const chatInput = document.getElementById("chat-input");
+            const sendButton = document.getElementById("send-button");
+            const aceEditor = ace.edit("editor");
+            const Range = ace.require("ace/range").Range;
+            const apiKeyInput = document.getElementById("api-key-input");
+            const apiKeySaveBtn = document.getElementById("api-key-save");
+            const shareUrlInput = document.getElementById("shareurl");
+            const shareButton = document.getElementById("share");
+
+            // Adjust shareurl appearance when clicked
+            shareButton.addEventListener("click", () => {
+                shareUrlInput.style.display = "inline-block";
+            });
+
+            // Load API key from localStorage if available
+            document.addEventListener("DOMContentLoaded", () => {
+                const savedApiKey = localStorage.getItem("groq_api_key");
+                if (savedApiKey) {
+                    apiKeyInput.value = savedApiKey;
+                }
+            });
+
+            // Save API key to localStorage
+            apiKeySaveBtn.addEventListener("click", () => {
+                const apiKey = apiKeyInput.value.trim();
+                if (apiKey) {
+                    localStorage.setItem("groq_api_key", apiKey);
+                    addMessage("API key saved successfully.", false);
+                } else {
+                    addMessage("Please enter a valid API key.", false);
+                }
+            });
+
+            function addMessage(content, isUser = false) {
+                const messageDiv = document.createElement("div");
+                messageDiv.className = `message ${isUser ? "user-message" : "ai-message"}`;
+                messageDiv.textContent = content;
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            async function handleUserMessage(message) {
+                addMessage(message, true);
+
+                // Normal AI message handling
+                let loadingDiv = null;
+                try {
+                    // Get API key
+                    const apiKey = apiKeyInput.value.trim() || localStorage.getItem("groq_api_key");
+                    if (!apiKey) {
+                        throw new Error("Please enter your Groq API key and click Save.");
+                    }
+
+                    // Show loading state
+                    loadingDiv = document.createElement("div");
+                    loadingDiv.className = "message ai-message";
+                    loadingDiv.textContent = "Thinking...";
+                    chatMessages.appendChild(loadingDiv);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                    // Call Groq API
+                    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${apiKey}`,
+                        },
+                        body: JSON.stringify({
+                            model: "qwen-2.5-coder-32b",
+                            messages: [
+                                {
+                                    role: "system",
+                                    content: `You are a helpful assistant that helps users create and modify Graphviz diagrams. You understand Graphviz syntax and can help users create various types of diagrams including ER diagrams, flowcharts, and other visualizations.`,
+                                },
+                                {
+                                    role: "user",
+                                    content: `The user's current diagram is:
+${aceEditor.getSession().getValue()}
+
+User's request: ${message}
+
+Please help them modify or create a Graphviz diagram. When providing code:
+1. Do NOT include the 'dot' prefix at the start of the code
+2. Start directly with 'digraph' or 'graph'
+3. Wrap the code in \`\`\`graphviz markers (not plaintext or other formats)
+4. Make sure the code is valid Graphviz syntax`,
+                                },
+                            ],
+                            temperature: 0.6,
+                            max_tokens: 4096,
+                            top_p: 0.95,
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        console.error("API Error Response:", errorData);
+                        throw new Error(errorData.error?.message || `API error: ${response.status} ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log("API Response:", data); // Add logging to debug response
+
+                    if (!data.choices || !data.choices[0]?.message?.content) {
+                        console.error("Invalid API Response:", data);
+                        throw new Error("Invalid response from Groq API");
+                    }
+
+                    const aiResponse = data.choices[0].message.content;
+
+                    // Remove loading message
+                    if (loadingDiv && loadingDiv.parentNode) {
+                        loadingDiv.parentNode.removeChild(loadingDiv);
+                    }
+
+                    // Add AI response
+                    addMessage(aiResponse);
+
+                    // If the AI response contains code suggestions, apply using FastApply
+                    if (aiResponse.includes("```")) {
+                        const codeMatch = aiResponse.match(/```(?:graphviz|dot|plaintext)?([\s\S]*?)```/);
+                        if (codeMatch) {
+                            let newCode = codeMatch[1].trim();
+
+                            // Remove any "dot" prefix that might be added
+                            if (newCode.startsWith("dot ")) {
+                                newCode = newCode.substring(4);
+                            }
+
+                            // Ensure code starts with digraph or graph (remove explanatory text)
+                            if (!newCode.trim().startsWith("digraph") && !newCode.trim().startsWith("graph")) {
+                                // Extract only the part starting with digraph/graph
+                                const graphMatch = newCode.match(/(digraph|graph)[\s\S]*/i);
+                                if (graphMatch) {
+                                    newCode = graphMatch[0];
+                                }
+                            }
+
+                            const currentCode = aceEditor.getSession().getValue();
+
+                            // Store the original code for potential rejection
+                            const originalCode = currentCode;
+
+                            try {
+                                // Show previewing state
+                                loadingDiv = document.createElement("div");
+                                loadingDiv.className = "message ai-message";
+                                loadingDiv.textContent = "Analyzing code changes...";
+                                chatMessages.appendChild(loadingDiv);
+
+                                // First generate a visual diff to show what will change
+                                const diffResult = createDetailedDiff(originalCode, newCode);
+
+                                // Apply the original code to the editor and highlight diffs
+                                aceEditor.getSession().setValue(originalCode);
+
+                                // Apply diff highlighting to show changes
+                                applyDiffHighlighting(diffResult);
+
+                                // Create buttons container
+                                const buttonsContainer = document.createElement("div");
+                                buttonsContainer.className = "editor-buttons-container";
+
+                                // Create Apply button
+                                const applyButton = document.createElement("button");
+                                applyButton.className = "diff-button apply-button";
+                                applyButton.textContent = "Accept Changes";
+                                applyButton.style.fontSize = "10px";
+                                applyButton.style.padding = "2px 6px";
+                                applyButton.onclick = () => {
+                                    // Remove the diff visualization
+                                    buttonsContainer.remove();
+
+                                    // Remove all phantom lines
+                                    const phantomLines = document.querySelectorAll(".ace-phantom-line");
+                                    phantomLines.forEach((line) => line.parentNode.removeChild(line));
+
+                                    // Remove any shadow lines from the current content
+                                    const currentContent = aceEditor.getSession().getValue();
+                                    const cleanedLines = currentContent.split("\n").filter((line) => !line.startsWith("§§SHADOW§§"));
+
+                                    // Clear markers and annotations
+                                    const aceMarkers = aceEditor.getSession().getMarkers();
+                                    if (aceMarkers) {
+                                        Object.keys(aceMarkers).forEach((markerId) => {
+                                            aceEditor.getSession().removeMarker(markerId);
+                                        });
+                                    }
+                                    aceEditor.getSession().clearAnnotations();
+
+                                    // First apply the new code directly
+                                    aceEditor.getSession().setValue(newCode);
+                                    window.renderGraph();
+
+                                    // Then try FastApply in the background for a refined version
+                                    processCodeChanges(originalCode, newCode)
+                                        .then((processedCode) => {
+                                            if (processedCode && processedCode !== newCode) {
+                                                // Only update if FastApply returned something different
+                                                aceEditor.getSession().setValue(processedCode);
+                                                window.renderGraph();
+                                            }
+                                        })
+                                        .catch((error) => {
+                                            console.error("Error in FastApply:", error);
+                                            // Already applied newCode directly, so no fallback needed
+                                        });
+                                };
+
+                                // Create Reject button
+                                const rejectButton = document.createElement("button");
+                                rejectButton.className = "diff-button reject-button";
+                                rejectButton.textContent = "Reject Changes";
+                                rejectButton.style.fontSize = "10px";
+                                rejectButton.style.padding = "2px 6px";
+                                rejectButton.onclick = () => {
+                                    // Just keep the original code, remove buttons and markers
+                                    buttonsContainer.remove();
+
+                                    // Remove all phantom lines
+                                    const phantomLines = document.querySelectorAll(".ace-phantom-line");
+                                    phantomLines.forEach((line) => line.parentNode.removeChild(line));
+
+                                    // Clean up
+                                    buttonsContainer.remove();
+                                    const aceMarkers = aceEditor.getSession().getMarkers();
+                                    if (aceMarkers) {
+                                        Object.keys(aceMarkers).forEach((markerId) => {
+                                            aceEditor.getSession().removeMarker(markerId);
+                                        });
+                                    }
+                                    aceEditor.getSession().clearAnnotations();
+                                    window.renderGraph();
+                                };
+
+                                buttonsContainer.appendChild(applyButton);
+                                buttonsContainer.appendChild(rejectButton);
+                                editorElement.appendChild(buttonsContainer);
+
+                                // Add a statistics message at the bottom of the chat
+                                if (loadingDiv && loadingDiv.parentNode) {
+                                    loadingDiv.parentNode.removeChild(loadingDiv);
+                                }
+
+                                const diffSummary = document.createElement("div");
+                                diffSummary.className = "message ai-message";
+
+                                // For minimal diagrams (digraph G { }), make the message precise
+                                const isMinimalDiagram = newCode.trim().match(/^digraph\s+\w+\s*\{\s*\}$/);
+
+                                // Calculate net changes, accounting for lines that were both added and removed
+                                const netAdded = diffResult.added.length;
+                                const netRemoved = diffResult.removed.length;
+
+                                if (isMinimalDiagram) {
+                                    // Count actual content lines being removed (not structure)
+                                    const contentLines = diffResult.removed.filter(
+                                        (line) =>
+                                            line.text.trim() &&
+                                            !line.text.trim().startsWith("digraph") &&
+                                            !line.text.trim().startsWith("graph") &&
+                                            line.text.trim() !== "}" &&
+                                            line.text.trim() !== "};"
+                                    ).length;
+
+                                    // Check if we're keeping structure (first/last lines)
+                                    const hasStructure = diffResult.unchanged.length > 0;
+
+                                    diffSummary.innerHTML = `
+                                        <strong>Code Changes:</strong> ${hasStructure ? 0 : 1} additions, ${contentLines} deletions.<br>
+                                        <em>This will create an empty diagram.</em><br>
+                                        <span style="font-size: 0.9em; color: #666;">Review the highlighted changes above and use the Accept/Reject buttons.</span>
+                                    `;
+                                } else if (netRemoved > 0 && netAdded === 0) {
+                                    // Only removals and no additions - deletion case
+                                    diffSummary.innerHTML = `
+                                        <strong>Code Changes:</strong> 0 additions, ${netRemoved} deletions.<br>
+                                        <span style="font-size: 0.9em; color: #666;">Review the highlighted changes above and use the Accept/Reject buttons.</span>
+                                    `;
+                                } else if (netAdded > 0 && netRemoved === 0) {
+                                    // Only additions and no removals - addition case
+                                    diffSummary.innerHTML = `
+                                        <strong>Code Changes:</strong> ${netAdded} additions, 0 deletions.<br>
+                                        <span style="font-size: 0.9em; color: #666;">Review the highlighted changes above and use the Accept/Reject buttons.</span>
+                                    `;
+                                } else {
+                                    // Mixed changes
+                                    diffSummary.innerHTML = `
+                                        <strong>Code Changes:</strong> ${netAdded} additions, ${netRemoved} deletions.<br>
+                                        <span style="font-size: 0.9em; color: #666;">Review the highlighted changes above and use the Accept/Reject buttons.</span>
+                                    `;
+                                }
+
+                                chatMessages.appendChild(diffSummary);
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            } catch (error) {
+                                console.error("Error analyzing changes:", error);
+                                if (loadingDiv && loadingDiv.parentNode) {
+                                    loadingDiv.parentNode.removeChild(loadingDiv);
+                                }
+                                // Fallback to direct application
+                                aceEditor.getSession().setValue(newCode);
+                                window.renderGraph();
+                            }
+
+                            // Define the processing function for when user accepts changes
+                            async function processCodeChanges(originalCode, newCode) {
+                                // Show loading message
+                                const loadingDiv = document.createElement("div");
+                                loadingDiv.className = "message ai-message";
+                                loadingDiv.textContent = "Applying changes with FastApply...";
+                                chatMessages.appendChild(loadingDiv);
+
+                                try {
+                                    // Default to just using the new code
+                                    let processedCode = newCode;
+
+                                    try {
+                                        // Using Cursor's approach: full file rewrite rather than diffs
+                                        // We pass both the current file and target file and let the model
+                                        // figure out how to transform one into the other
+                                        const requestBody = {
+                                            model: "fastapply-7b-v1.0",
+                                            // More explicit prompt to avoid instructional responses
+                                            prompt: `You are a precise code editing system. 
+Current file contents:
+\`\`\`
+${originalCode}
+\`\`\`
+
+Target file contents:
+\`\`\`
+${newCode}
+\`\`\`
+
+Your job is to output ONLY the exact new code, with no explanations or comments about what you're doing.
+Do not include phrases like "Replace the content" or similar instructions.
+Output the complete Graphviz code directly:`,
+                                            temperature: 0.1,
+                                            max_tokens: 4000,
+                                        };
+
+                                        console.log("FastApply request body:", JSON.stringify(requestBody, null, 2));
+
+                                        // Using completions endpoint from LM Studio
+                                        const fastApplyResponse = await fetch("http://localhost:1234/v1/completions", {
+                                            method: "POST",
+                                            headers: {
+                                                "Content-Type": "application/json",
+                                            },
+                                            body: JSON.stringify(requestBody),
+                                        });
+
+                                        console.log("FastApply response status:", fastApplyResponse.status);
+
+                                        if (!fastApplyResponse.ok) {
+                                            const errorText = await fastApplyResponse.text();
+                                            console.error(`FastApply API error response:`, errorText);
+                                            throw new Error(
+                                                `FastApply error: ${fastApplyResponse.status} ${fastApplyResponse.statusText} - ${errorText}`
+                                            );
+                                        }
+
+                                        const fastApplyData = await fastApplyResponse.json();
+                                        console.log("FastApply response data:", fastApplyData);
+
+                                        // Check for valid response - we expect the whole rewritten file
+                                        if (fastApplyData?.choices?.length > 0) {
+                                            const responseText = fastApplyData.choices[0].text;
+
+                                            if (responseText && responseText.trim().length > 0) {
+                                                // Extract code if it's wrapped in markdown code blocks
+                                                const codeMatch = responseText.match(/```(?:graphviz|dot|plaintext)?([\s\S]*?)```/);
+                                                processedCode = codeMatch ? codeMatch[1].trim() : responseText.trim();
+                                                console.log("FastApply generated:", processedCode);
+
+                                                // Filter out common instruction patterns
+                                                if (
+                                                    processedCode.includes("Replace the content") ||
+                                                    processedCode.includes("Current file") ||
+                                                    processedCode.includes("Target file")
+                                                ) {
+                                                    console.log("Removing instructional text from FastApply response");
+                                                    // Fall back to the original new code
+                                                    processedCode = newCode;
+                                                }
+
+                                                // Clean up - ensure it starts with digraph or graph
+                                                if (
+                                                    !processedCode.trim().startsWith("digraph") &&
+                                                    !processedCode.trim().startsWith("graph")
+                                                ) {
+                                                    // Extract only the part starting with digraph/graph
+                                                    const graphMatch = processedCode.match(/(digraph|graph)[\s\S]*/i);
+                                                    if (graphMatch) {
+                                                        processedCode = graphMatch[0];
+                                                    } else {
+                                                        // If we can't find a valid graph, use the original new code
+                                                        processedCode = newCode;
+                                                    }
+                                                }
+
+                                                // Validate that we actually got a Graphviz diagram
+                                                if (!processedCode.includes("digraph") && !processedCode.includes("graph")) {
+                                                    console.error("FastApply returned non-Graphviz content:", processedCode);
+                                                    throw new Error("FastApply didn't return valid Graphviz code");
+                                                }
+                                            } else {
+                                                throw new Error("FastApply returned an empty response");
+                                            }
+                                        } else {
+                                            throw new Error("Invalid response format from FastApply");
+                                        }
+                                    } catch (error) {
+                                        console.error("FastApply Error:", error);
+                                        // Keep using newCode as fallback
+
+                                        // Silently fail without showing an error message
+                                        console.log("Falling back to original code without showing error message");
+                                    }
+
+                                    // Remove loading message
+                                    if (loadingDiv && loadingDiv.parentNode) {
+                                        loadingDiv.parentNode.removeChild(loadingDiv);
+                                    }
+
+                                    // Return the processed code (either from FastApply or the original newCode)
+                                    return processedCode;
+                                } catch (error) {
+                                    console.error("Error in processCodeChanges:", error);
+
+                                    // Remove loading message
+                                    if (loadingDiv && loadingDiv.parentNode) {
+                                        loadingDiv.parentNode.removeChild(loadingDiv);
+                                    }
+
+                                    // Show error message
+                                    const errorMsg = document.createElement("div");
+                                    errorMsg.className = "message ai-message";
+                                    errorMsg.textContent = "Error during FastApply processing.";
+                                    chatMessages.appendChild(errorMsg);
+
+                                    // Return the original newCode as fallback
+                                    return newCode;
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+
+                    // Remove loading message if it exists
+                    if (loadingDiv && loadingDiv.parentNode) {
+                        loadingDiv.parentNode.removeChild(loadingDiv);
+                    }
+
+                    // Show specific error message
+                    let errorMessage = "An error occurred while processing your request.";
+                    if (error.message.includes("API key")) {
+                        errorMessage = error.message;
+                    } else if (error.message.includes("API error")) {
+                        errorMessage = `API Error: ${error.message}\nPlease check your API key and try again.`;
+                    } else {
+                        errorMessage = error.message;
+                    }
+
+                    addMessage(errorMessage);
+                }
+            }
+
+            // Event listeners
+            sendButton.addEventListener("click", () => {
+                const message = chatInput.value.trim();
+                if (message) {
+                    handleUserMessage(message);
+                    chatInput.value = "";
+                }
+            });
+
+            chatInput.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") {
+                    sendButton.click();
+                }
+            });
+
+            // Helper function for a more detailed diff that handles specific code changes
+            const createDetailedDiff = (oldText, newText) => {
+                const oldLines = oldText.split("\n");
+                const newLines = newText.split("\n");
+
+                // Initialize results
+                const result = {
+                    added: [],
+                    removed: [],
+                    unchanged: [],
+                };
+
+                // Fast path for identical files
+                if (oldText === newText) {
+                    for (let i = 0; i < oldLines.length; i++) {
+                        result.unchanged.push({
+                            text: oldLines[i],
+                            oldIndex: i,
+                            newIndex: i,
+                        });
+                    }
+                    return result;
+                }
+
+                // Special case for minimal diagram (digraph G { })
+                const isMinimalDiagram = newText.trim().match(/^digraph\s+\w+\s*\{\s*\}$/);
+
+                // Empty diagram special case
+                if (isMinimalDiagram) {
+                    console.log("Special case: Handling minimal diagram");
+
+                    // Check if we have common structural elements
+                    const diagramStartMatch = oldLines.findIndex(
+                        (line) => line.trim().startsWith("digraph") || line.trim().startsWith("graph")
+                    );
+
+                    const braceEndMatch = oldLines.findIndex((line) => line.trim() === "}" || line.trim() === "};");
+
+                    // If we found matching structure elements, preserve them as unchanged
+                    if (diagramStartMatch >= 0) {
+                        result.unchanged.push({
+                            text: oldLines[diagramStartMatch],
+                            oldIndex: diagramStartMatch,
+                            newIndex: 0,
+                        });
+
+                        // Mark everything except structure as removed
+                        for (let i = 0; i < oldLines.length; i++) {
+                            if (i !== diagramStartMatch && i !== braceEndMatch) {
+                                result.removed.push({
+                                    text: oldLines[i],
+                                    oldIndex: i,
+                                    newIndex: 1, // Position all removals after the digraph line
+                                });
+                            }
+                        }
+
+                        // Mark closing brace as unchanged if found
+                        if (braceEndMatch >= 0 && braceEndMatch !== diagramStartMatch) {
+                            result.unchanged.push({
+                                text: oldLines[braceEndMatch],
+                                oldIndex: braceEndMatch,
+                                newIndex: newLines.length - 1,
+                            });
+                        }
+
+                        // If new version has content beyond our identified structure, mark it as added
+                        if (newLines.length > 1) {
+                            for (let i = 0; i < newLines.length; i++) {
+                                const isStartLine =
+                                    i === 0 && diagramStartMatch >= 0 && newLines[i].trim().startsWith(oldLines[diagramStartMatch].trim());
+                                const isEndLine =
+                                    i === newLines.length - 1 &&
+                                    braceEndMatch >= 0 &&
+                                    newLines[i].trim() === oldLines[braceEndMatch].trim();
+
+                                if (!isStartLine && !isEndLine) {
+                                    result.added.push({
+                                        text: newLines[i],
+                                        newIndex: i,
+                                    });
+                                }
+                            }
+                        }
+                    } else {
+                        // No common structure, mark everything as added/removed
+                        oldLines.forEach((line, idx) => {
+                            result.removed.push({
+                                text: line,
+                                oldIndex: idx,
+                                newIndex: 0,
+                            });
+                        });
+
+                        newLines.forEach((line, idx) => {
+                            result.added.push({
+                                text: line,
+                                newIndex: idx,
+                            });
+                        });
+                    }
+
+                    return result;
+                }
+
+                // Build a map of line occurrences to help with matching
+                const lineOccurrences = new Map();
+                oldLines.forEach((line, index) => {
+                    if (!lineOccurrences.has(line)) {
+                        lineOccurrences.set(line, []);
+                    }
+                    lineOccurrences.get(line).push(index);
+                });
+
+                // For all other cases, use a more sophisticated diff that identifies:
+                // 1. Exact matches (unchanged lines)
+                // 2. Inserted lines (not in old text)
+                // 3. Deleted lines (not in new text)
+                // Use dynamic programming to find the longest common subsequence
+
+                // First pass: identify exact matches (unchanged lines)
+                const oldMatched = Array(oldLines.length).fill(false);
+                const newMatched = Array(newLines.length).fill(false);
+
+                // Track matched pairs
+                const matchedPairs = [];
+
+                // First identify block matches (multiple consecutive lines)
+                let blockSize = 3; // Look for blocks of 3 or more identical lines
+                while (blockSize > 0) {
+                    for (let i = 0; i <= oldLines.length - blockSize; i++) {
+                        if (oldMatched[i]) continue;
+
+                        // Create a signature for this block
+                        const blockSignature = oldLines.slice(i, i + blockSize).join("\n");
+
+                        // Look for matching blocks in the new text
+                        for (let j = 0; j <= newLines.length - blockSize; j++) {
+                            if (newMatched[j]) continue;
+
+                            const newBlockSignature = newLines.slice(j, j + blockSize).join("\n");
+                            if (blockSignature === newBlockSignature) {
+                                // We found a matching block, mark all lines in the block as matched
+                                for (let k = 0; k < blockSize; k++) {
+                                    oldMatched[i + k] = true;
+                                    newMatched[j + k] = true;
+                                    matchedPairs.push([i + k, j + k]);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    blockSize--; // Reduce block size to find smaller matches
+                }
+
+                // Now match remaining individual lines
+                for (let i = 0; i < oldLines.length; i++) {
+                    if (oldMatched[i]) continue;
+
+                    for (let j = 0; j < newLines.length; j++) {
+                        if (newMatched[j]) continue;
+
+                        if (oldLines[i] === newLines[j]) {
+                            oldMatched[i] = true;
+                            newMatched[j] = true;
+                            matchedPairs.push([i, j]);
+                            break;
+                        }
+                    }
+                }
+
+                // Sort matched pairs by old index to preserve order
+                matchedPairs.sort((a, b) => a[0] - b[0]);
+
+                // Process unchanged lines
+                for (const [oldIdx, newIdx] of matchedPairs) {
+                    result.unchanged.push({
+                        text: oldLines[oldIdx],
+                        oldIndex: oldIdx,
+                        newIndex: newIdx,
+                    });
+                }
+
+                // Process added lines (any line in new not matched)
+                for (let j = 0; j < newLines.length; j++) {
+                    if (!newMatched[j]) {
+                        result.added.push({
+                            text: newLines[j],
+                            newIndex: j,
+                        });
+                    }
+                }
+
+                // Process removed lines (any line in old not matched)
+                for (let i = 0; i < oldLines.length; i++) {
+                    if (!oldMatched[i]) {
+                        // Find a good position in the new text where this line would go
+                        let newPosition = 0;
+
+                        // If there's an unchanged line after this one, position before that
+                        let foundNext = false;
+                        for (let nextOld = i + 1; nextOld < oldLines.length && !foundNext; nextOld++) {
+                            if (oldMatched[nextOld]) {
+                                // Find where this next old line appears in the new text
+                                for (const [oldIdx, newIdx] of matchedPairs) {
+                                    if (oldIdx === nextOld) {
+                                        newPosition = newIdx;
+                                        foundNext = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // If we didn't find a next position, try using previous line's position + 1
+                        if (!foundNext && i > 0 && oldMatched[i - 1]) {
+                            for (const [oldIdx, newIdx] of matchedPairs) {
+                                if (oldIdx === i - 1) {
+                                    newPosition = newIdx + 1;
+                                    break;
+                                }
+                            }
+                        }
+
+                        result.removed.push({
+                            text: oldLines[i],
+                            oldIndex: i,
+                            newIndex: Math.min(newPosition, newLines.length),
+                        });
+                    }
+                }
+
+                // Sort the arrays by indices for consistent display
+                result.added.sort((a, b) => a.newIndex - b.newIndex);
+                result.removed.sort((a, b) => a.oldIndex - b.oldIndex);
+                result.unchanged.sort((a, b) => a.newIndex - b.newIndex);
+
+                // Log results for debugging
+                console.log("Diff results:", {
+                    added: result.added.length,
+                    removed: result.removed.length,
+                    unchanged: result.unchanged.length,
+                });
+
+                return result;
+            };
+
+            // Function to apply highlighting based on diff results
+            const applyDiffHighlighting = (diffResult) => {
+                // First, remove any existing phantom lines
+                const existingPhantomLines = document.querySelectorAll(".ace-phantom-line");
+                existingPhantomLines.forEach((line) => {
+                    if (line.parentNode) {
+                        line.parentNode.removeChild(line);
+                    }
+                });
+
+                // Clear existing markers and annotations
+                const session = aceEditor.getSession();
+                const markers = session.getMarkers();
+                if (markers) {
+                    Object.keys(markers).forEach((markerId) => {
+                        session.removeMarker(markerId);
+                    });
+                }
+                session.clearAnnotations();
+
+                const annotations = [];
+
+                // Is this a minimal diagram replacement? (one that empties everything except outer structure)
+                const isMinimalReplacement =
+                    diffResult.unchanged.length <= 2 && diffResult.removed.length > 5 && diffResult.added.length <= 1;
+
+                // Identify potential line replacements (where a line is deleted and another added nearby)
+                const replacements = [];
+
+                // Only try to match replacements for smaller changes, not wholesale rewrites
+                if (!isMinimalReplacement && diffResult.removed.length > 0 && diffResult.added.length > 0) {
+                    // Group removed lines by their position in the new text
+                    const removedByPosition = {};
+                    diffResult.removed.forEach((removed) => {
+                        const pos = removed.newIndex;
+                        if (!removedByPosition[pos]) removedByPosition[pos] = [];
+                        removedByPosition[pos].push(removed);
+                    });
+
+                    // Look for added lines at the same positions
+                    diffResult.added.forEach((added) => {
+                        const pos = added.newIndex;
+                        // Check if we have any removed lines at the same position or close by
+                        const nearbyRemoved = removedByPosition[pos] || removedByPosition[pos - 1] || removedByPosition[pos + 1];
+
+                        if (nearbyRemoved && nearbyRemoved.length > 0) {
+                            // Find the best match (most similar text)
+                            let bestMatch = nearbyRemoved[0];
+                            let bestSimilarity = 0;
+
+                            if (nearbyRemoved.length > 1) {
+                                // Very simple similarity: count common characters
+                                nearbyRemoved.forEach((removed) => {
+                                    let similarity = 0;
+                                    const minLength = Math.min(removed.text.length, added.text.length);
+                                    for (let i = 0; i < minLength; i++) {
+                                        if (removed.text[i] === added.text[i]) similarity++;
+                                    }
+                                    if (similarity > bestSimilarity) {
+                                        bestSimilarity = similarity;
+                                        bestMatch = removed;
+                                    }
+                                });
+                            }
+
+                            replacements.push({
+                                removed: bestMatch,
+                                added: added,
+                            });
+
+                            // Remove the matched line from consideration
+                            const idx = diffResult.removed.indexOf(bestMatch);
+                            if (idx > -1) diffResult.removed.splice(idx, 1);
+
+                            const addedIdx = diffResult.added.indexOf(added);
+                            if (addedIdx > -1) diffResult.added.splice(addedIdx, 1);
+                        }
+                    });
+                }
+
+                // Get the original lines and prepare to manipulate them
+                let currentLines = session.getValue().split("\n");
+
+                // For each replacement, insert a "phantom" line directly into the editor content
+                // but make it visually distinct and track it for later removal
+                const shadowLines = [];
+
+                // Sort replacements by line number (descending) to insert top-down
+                replacements.sort((a, b) => b.added.newIndex - a.added.newIndex);
+
+                // Insert shadow lines for replacements
+                replacements.forEach((replacement) => {
+                    const targetLine = replacement.added.newIndex;
+                    const shadowLine = {
+                        index: targetLine,
+                        text: replacement.removed.text,
+                    };
+                    shadowLines.push(shadowLine);
+
+                    // Directly insert into the content lines with a special prefix
+                    currentLines.splice(targetLine, 0, "§§SHADOW§§" + replacement.removed.text);
+                });
+
+                // Insert the shadow lines into the editor
+                session.setValue(currentLines.join("\n"));
+
+                // Now find and style the shadow lines
+                shadowLines.forEach((shadow) => {
+                    // The index may have shifted due to our insertions
+                    const lineIndex = currentLines.findIndex((line, idx) => line.startsWith("§§SHADOW§§") && idx >= shadow.index);
+
+                    if (lineIndex >= 0) {
+                        // Create a marker for the shadow line in red
+                        session.addMarker(new Range(lineIndex, 0, lineIndex, shadow.text.length + 10), "ace_remove", "fullLine");
+                    }
+                });
+
+                // Now restore the real content without shadows for the next operations
+                // but keep their visual effect with markers
+                const realLines = currentLines.filter((line) => !line.startsWith("§§SHADOW§§"));
+
+                // Set the content back to real lines, preserving our markers
+                // This prevents the shadow lines from being part of the actual content
+                const currentMarkers = session.getMarkers();
+                session.setValue(realLines.join("\n"));
+
+                // Now handle the regular additions
+                if (diffResult.added && diffResult.added.length > 0) {
+                    // Build the new content with additions
+                    const lines = session.getValue().split("\n");
+
+                    // Sort added lines by index (descending) to not affect later indices
+                    const sortedAdds = [...diffResult.added].sort((a, b) => b.newIndex - a.newIndex);
+
+                    // Insert each added line
+                    sortedAdds.forEach((addedInfo) => {
+                        if (addedInfo.newIndex < lines.length) {
+                            lines.splice(addedInfo.newIndex, 0, addedInfo.text);
+                        } else {
+                            lines.push(addedInfo.text);
+                        }
+                    });
+
+                    // Update editor with the additions
+                    session.setValue(lines.join("\n"));
+
+                    // Apply markers for the added lines
+                    diffResult.added.forEach((addedInfo) => {
+                        try {
+                            // Highlight the entire line
+                            const lineLength = addedInfo.text.length || 1;
+
+                            // Create a marker for the entire line
+                            const marker = session.addMarker(
+                                new Range(addedInfo.newIndex, 0, addedInfo.newIndex, lineLength),
+                                "ace_add",
+                                "fullLine"
+                            );
+
+                            // Add annotation
+                            annotations.push({
+                                row: addedInfo.newIndex,
+                                column: 0,
+                                text: "+ Added",
+                                type: "info",
+                            });
+                        } catch (e) {
+                            console.error(`Error highlighting added line ${addedInfo.newIndex}:`, e);
+                        }
+                    });
+                }
+
+                // Handle removed lines that aren't replacements
+                if (diffResult.removed && diffResult.removed.length > 0) {
+                    diffResult.removed.forEach((removedInfo) => {
+                        try {
+                            // Try to find a good position for this removed line
+                            let targetPosition = Math.min(removedInfo.newIndex, session.getLength() - 1);
+
+                            // Add annotation for the removed content
+                            annotations.push({
+                                row: targetPosition,
+                                column: 0,
+                                text: "- " + removedInfo.text,
+                                type: "error",
+                            });
+
+                            // Create a marker for the position
+                            const marker = session.addMarker(new Range(targetPosition, 0, targetPosition, 1), "ace_remove", "fullLine");
+                        } catch (e) {
+                            console.error(`Error handling removed line:`, e);
+                        }
+                    });
+                }
+
+                // Apply annotations with overload protection
+                if (annotations.length > 0) {
+                    session.setAnnotations(annotations);
+                }
+
+                // Log for debugging
+                console.log(
+                    `Applied highlighting: ${diffResult.added.length} adds, ${diffResult.removed.length} removes, ${replacements.length} replacements`
+                );
+            };
+
+            // Helper function to add accept/reject buttons to the editor
+            function addAcceptRejectButtons(fromCode, toCode) {
+                // Create buttons container
+                const buttonsContainer = document.createElement("div");
+                buttonsContainer.className = "editor-buttons-container";
+
+                // Create Apply button
+                const applyButton = document.createElement("button");
+                applyButton.className = "diff-button apply-button";
+                applyButton.textContent = "Accept";
+                applyButton.onclick = () => {
+                    // Remove the diff visualization
+                    buttonsContainer.remove();
+
+                    // Remove all phantom lines
+                    const phantomLines = document.querySelectorAll(".ace-phantom-line");
+                    phantomLines.forEach((line) => line.parentNode.removeChild(line));
+
+                    // Remove any shadow lines from the current content
+                    const currentContent = aceEditor.getSession().getValue();
+                    const cleanedLines = currentContent.split("\n").filter((line) => !line.startsWith("§§SHADOW§§"));
+
+                    // Clear markers and annotations
+                    const aceMarkers = aceEditor.getSession().getMarkers();
+                    if (aceMarkers) {
+                        Object.keys(aceMarkers).forEach((markerId) => {
+                            aceEditor.getSession().removeMarker(markerId);
+                        });
+                    }
+                    aceEditor.getSession().clearAnnotations();
+
+                    // First apply the new code directly
+                    aceEditor.getSession().setValue(toCode);
+                    window.renderGraph();
+
+                    // Then try FastApply in the background for a refined version
+                    processCodeChanges(fromCode, toCode)
+                        .then((processedCode) => {
+                            if (processedCode && processedCode !== toCode) {
+                                // Only update if FastApply returned something different
+                                aceEditor.getSession().setValue(processedCode);
+                                window.renderGraph();
+                            }
+                        })
+                        .catch((error) => {
+                            console.error("Error in FastApply:", error);
+                            // Already applied newCode directly, so no fallback needed
+                        });
+                };
+
+                // Create Reject button
+                const rejectButton = document.createElement("button");
+                rejectButton.className = "diff-button reject-button";
+                rejectButton.textContent = "Reject";
+                rejectButton.onclick = () => {
+                    // Remove the diff visualization
+                    buttonsContainer.remove();
+
+                    // Remove all phantom lines
+                    const phantomLines = document.querySelectorAll(".ace-phantom-line");
+                    phantomLines.forEach((line) => line.parentNode.removeChild(line));
+
+                    // Remove any shadow lines from the current content
+                    const currentContent = aceEditor.getSession().getValue();
+                    const cleanedLines = currentContent.split("\n").filter((line) => !line.startsWith("§§SHADOW§§"));
+
+                    // Clear markers and annotations
+                    const aceMarkers = aceEditor.getSession().getMarkers();
+                    if (aceMarkers) {
+                        Object.keys(aceMarkers).forEach((markerId) => {
+                            aceEditor.getSession().removeMarker(markerId);
+                        });
+                    }
+                    aceEditor.getSession().clearAnnotations();
+
+                    // Keep the original code (already has shadow lines removed)
+                    aceEditor.getSession().setValue(cleanedLines.join("\n"));
+                    window.renderGraph();
+                };
+
+                buttonsContainer.appendChild(applyButton);
+                buttonsContainer.appendChild(rejectButton);
+                editorElement.appendChild(buttonsContainer);
+            }
+        </script>
+    </body>
 </html>
